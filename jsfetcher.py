@@ -1,7 +1,11 @@
 import requests
 import re
+import multiprocessing
+
+session = None
 
 _regex = {
+    'textToFind' : r'catch\(g\)\{\}\}\(window\)\);',
     'google_api'     : r'AIza[0-9A-Za-z-_]{35}',
     'firebase'  : r'AAAA[A-Za-z0-9_-]{7}:[A-Za-z0-9_-]{140}',
     'google_captcha' : r'6L[0-9A-Za-z-_]{38}|^6[0-9a-zA-Z_-]{39}$',
@@ -44,26 +48,28 @@ _regex = {
                     r"passwd\s*[`=:\"]+\s*[^\s]+)",
 }
 
-URL='https://afcs.dellcdn.com/tnt/adobebundle/shop/bundle_toggle.min.js'
-textToFind = 'catch(g){}}(window));'
+
+def set_global_session():
+    global session
+    if not session:
+        session = requests.Session()
 
 
-# def jsprint(urlofjs):
-#     r = requests.get(urlofjs)
-#     print(r.text.find(textToFind))
+def jsparser(urls):
+       with session.get(urls) as response:
+              for dictkey, dictvalue in _regex.items():
+                     wordfinder = re.findall(dictvalue, response.content.decode())
+                     print(wordfinder)
 
-r = requests.get(URL)
-
-datajs = r.text
-
-x = re.findall("catch", datajs)
-
-print(x)
-
-# if textToFind in datajs:
-#     print('YES')
-# else:
-#     print('No')
+def all_js_urls_in_pool(sites):
+    with multiprocessing.Pool(initializer=set_global_session) as pool:
+        pool.map(jsparser, sites)
 
 
-
+if __name__ == '__main__':
+    sites = [
+        "https://afcs.dellcdn.com/tnt/adobebundle/shop/bundle_toggle.min.js",
+        "https://cdn.realpython.com/static/frontend/reader/rw.38bf29157dfe.js",
+        "https://cdn.realpython.com/static/jquery.min.8fb8fee4fcc3.js"
+    ]
+    all_js_urls_in_pool(sites)
