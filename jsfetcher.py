@@ -1,9 +1,15 @@
-import requests
-import re
-import multiprocessing
+#python3
 
+import argparse
+import multiprocessing
+import re
+import requests
+import sys
+
+#default value
 session = None
 
+# add regex here 
 _regex = {
     'textToFind' : r'catch\(g\)\{\}\}\(window\)\);',
     'google_api'     : r'AIza[0-9A-Za-z-_]{35}',
@@ -48,28 +54,48 @@ _regex = {
                     r"passwd\s*[`=:\"]+\s*[^\s]+)",
 }
 
-
+# requests module is not threadsafe creating session for URLs
 def set_global_session():
     global session
     if not session:
         session = requests.Session()
 
-
+# parsing response of URL's request and matching it with given regexs.
 def jsparser(urls):
-       with session.get(urls) as response:
-              for dictkey, dictvalue in _regex.items():
-                     wordfinder = re.findall(dictvalue, response.content.decode())
-                     print(wordfinder)
+    try:
+        with session.get(urls) as response:
+            # print(urls,"\n")
+            for dictkey, dictvalue in _regex.items():
+                wordfinder = re.findall(dictvalue, response.content.decode('utf-8'))
+                if wordfinder == []:
+                    continue
+                else:
+                    print(f"{urls}\n{dictkey} = {''.join(wordfinder)}\n")
+    
+    except Exception as e:
+        pass                
 
+# all_js_urls_in_pool makes URLs iterable to fetch
 def all_js_urls_in_pool(sites):
-    with multiprocessing.Pool(initializer=set_global_session) as pool:
-        pool.map(jsparser, sites)
+    try:
+        with multiprocessing.Pool(args.concurrency, initializer=set_global_session) as pool:
+            pool.map(jsparser, sites)
+            pool.close()
+    except Exception as e:
+        pass        
 
 
 if __name__ == '__main__':
-    sites = [
-        "https://afcs.dellcdn.com/tnt/adobebundle/shop/bundle_toggle.min.js",
-        "https://cdn.realpython.com/static/frontend/reader/rw.38bf29157dfe.js",
-        "https://cdn.realpython.com/static/jquery.min.8fb8fee4fcc3.js"
-    ]
-    all_js_urls_in_pool(sites)
+
+    parser = argparse.ArgumentParser(description="Token Finder:)")
+    parser.add_argument("-u","--url", metavar='',type=str, help='URL ends with js')
+    parser.add_argument("-c","--concurrency", metavar='',type=int, help='number of URLs to be processed in parallel (int)')
+    parser.add_argument("-f", "--file", metavar='', type=argparse.FileType('r'), help='file containing js URLs (default .txt file format)')
+    args = parser.parse_args(args=None if sys.argv[1:] else ['--help'])
+
+    if args.url:
+        all_js_urls_in_pool([args.url])
+    elif args.file:    
+        with args.file as f:
+            urls_from_file = f.read().splitlines()
+            all_js_urls_in_pool(urls_from_file)
