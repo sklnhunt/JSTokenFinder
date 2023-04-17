@@ -1,6 +1,6 @@
 # JSTokenFinder
 
-* jstokenfinder a Python file which takes javascript URL or URLs as a file (.txt) and find tokens from it from given regular expressions if it finds anything in js file then it will print.
+* jstokenfinder is a Python file which takes javascript URL or URLs as a file (.txt) and find tokens from it from given regular expressions if it finds anything in js file then it will print.
 
 
 ## Usage
